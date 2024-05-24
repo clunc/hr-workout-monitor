@@ -1,0 +1,17 @@
+{
+    "name": "Svelte App Dev Container",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "svelte-app",
+    "workspaceFolder": "/app",
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.git"
+    ],
+    "postCreateCommand": "apk update && apk add git && git config --global --add safe.directory /app",
+    // "remoteUser": "node"
+}
