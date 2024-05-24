@@ -2,17 +2,24 @@
     // Import onDestroy from Svelte to handle cleanup
     import { onDestroy } from 'svelte';
 
+    // Define the Interval interface to represent each segment of the bar
+    interface Interval {
+        min: number; // Minimum value of the interval
+        max: number; // Maximum value of the interval
+        color: string; // Color of the interval
+    }
+
     // Define the IntervalBar class to manage the bar's state and behavior
     class IntervalBar {
         min: number; // Minimum value of the bar
         max: number; // Maximum value of the bar
-        intervals: { min: number, max: number, color: string }[]; // Array of interval objects
+        intervals: Interval[]; // Array of interval objects
         currentValue: number; // Current value of the bar
         direction: number; // Direction of value change (1 for increasing, -1 for decreasing)
         timer: NodeJS.Timeout | null; // Timer for the animation
 
         // Constructor to initialize the IntervalBar instance
-        constructor(intervals: { min: number, max: number, color: string }[]) {
+        constructor(intervals: Interval[]) {
             this.intervals = intervals;
             this.min = Math.min(...intervals.map(interval => interval.min));
             this.max = Math.max(...intervals.map(interval => interval.max));
@@ -24,7 +31,6 @@
         // Method to start the animation and update the current value
         startAnimation(callback: (value: number) => void) {
             this.timer = setInterval(() => {
-                // Update the current value based on the direction
                 if (this.direction === 1) {
                     this.currentValue += 1;
                     if (this.currentValue >= this.max) {
@@ -36,7 +42,6 @@
                         this.direction = 1;
                     }
                 }
-                // Call the callback function to update the display
                 callback(this.currentValue);
             }, 50); // Update every 50 milliseconds
         }
@@ -49,38 +54,38 @@
         // Method to calculate the needle position as a percentage
         calculateNeedlePosition() {
             const cappedValue = Math.max(this.min, Math.min(this.max, this.currentValue));
-            const position = ((cappedValue - this.min) / (this.max - this.min)) * 100;
-            return position;
+            return ((cappedValue - this.min) / (this.max - this.min)) * 100;
         }
 
         // Method to calculate the width and color of each interval segment
         getSegmentWidths() {
             return this.intervals.map((interval, index) => {
                 const width = ((interval.max - interval.min) / (this.max - this.min)) * 100;
-                const isLast = index === this.intervals.length - 1;
-                return { width, color: interval.color, isLast };
+                return { width, color: interval.color, index };
             });
         }
 
         // Method to get the color class for the current value
         getColorClass() {
             const interval = this.intervals.find(interval => this.currentValue >= interval.min && this.currentValue <= interval.max);
-            if (interval) {
-                switch(interval.color) {
-                    case '#4E4E4E': return 'dark-gray';
-                    case '#3A6351': return 'dark-green';
-                    case '#A4A90D': return 'olive';
-                    case '#FF8C42': return 'dark-orange';
-                    case '#B33030': return 'dark-red';
-                    default: return '';
-                }
-            }
-            return '';
+            return interval ? this.getColorName(interval.color) : '';
+        }
+
+        // Private helper method to map a color to a class name
+        private getColorName(color: string) {
+            const colorMap: { [key: string]: string } = {
+                '#4E4E4E': 'dark-gray',
+                '#3A6351': 'dark-green',
+                '#A4A90D': 'olive',
+                '#FF8C42': 'dark-orange',
+                '#B33030': 'dark-red',
+            };
+            return colorMap[color] || '';
         }
     }
 
     // Define the intervals for the bar
-    const intervals = [
+    const intervals: Interval[] = [
         { min: 100, max: 130, color: '#4E4E4E' }, // Dark Gray
         { min: 130, max: 140, color: '#3A6351' }, // Dark Green
         { min: 140, max: 180, color: '#A4A90D' }, // Olive
@@ -205,10 +210,10 @@
         <h2>Value</h2>
         <div class="bar">
             <!-- Loop through each segment and display it with appropriate styling -->
-            {#each segmentWidths as { width, color }, i}
+            {#each segmentWidths as { width, color, index }}
                 <div 
                     class="segment" 
-                    style="left: {segmentWidths.slice(0, i).reduce((sum, s) => sum + s.width, 0)}%; width: {width}%; background: {color};">
+                    style="left: {segmentWidths.slice(0, index).reduce((sum, s) => sum + s.width, 0)}%; width: {width}%; background: {color};">
                 </div>
             {/each}
             <!-- Needle indicating the current value position -->
