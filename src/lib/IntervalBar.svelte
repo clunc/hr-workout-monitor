@@ -61,15 +61,31 @@
                 return { width, color: interval.color, isLast };
             });
         }
+
+        // Method to get the color class for the current value
+        getColorClass() {
+            const interval = this.intervals.find(interval => this.currentValue >= interval.min && this.currentValue <= interval.max);
+            if (interval) {
+                switch(interval.color) {
+                    case '#4E4E4E': return 'dark-gray';
+                    case '#3A6351': return 'dark-green';
+                    case '#A4A90D': return 'olive';
+                    case '#FF8C42': return 'dark-orange';
+                    case '#B33030': return 'dark-red';
+                    default: return '';
+                }
+            }
+            return '';
+        }
     }
 
     // Define the intervals for the bar
     const intervals = [
-        { min: 0, max: 130, color: 'white' },
-        { min: 130, max: 140, color: 'green' },
-        { min: 140, max: 180, color: 'yellow' },
-        { min: 180, max: 190, color: 'red' },
-        { min: 190, max: 300, color: 'darkred' }
+        { min: 0, max: 130, color: '#4E4E4E' }, // Dark Gray
+        { min: 130, max: 140, color: '#3A6351' }, // Dark Green
+        { min: 140, max: 180, color: '#A4A90D' }, // Olive
+        { min: 180, max: 190, color: '#FF8C42' }, // Dark Orange
+        { min: 190, max: 300, color: '#B33030' } // Dark Red
     ];
 
     // Create an instance of IntervalBar
@@ -78,12 +94,14 @@
     let currentValue = intervalBar.currentValue; // Initialize the current value
     let needlePosition = intervalBar.calculateNeedlePosition(); // Calculate the initial needle position
     let segmentWidths = intervalBar.getSegmentWidths(); // Calculate the initial segment widths
+    let colorClass = intervalBar.getColorClass(); // Get the initial color class
 
     // Function to update the display when the value changes
     function updateDisplay() {
         currentValue = intervalBar.currentValue;
         needlePosition = intervalBar.calculateNeedlePosition();
         segmentWidths = intervalBar.getSegmentWidths();
+        colorClass = intervalBar.getColorClass();
     }
 
     // Cleanup the interval on component destruction
@@ -113,7 +131,7 @@
         margin: 20px 0;
     }
 
-    /* Background bar for the intervals */
+    /* Background bar for the intervals without a border */
     .bar {
         width: 300px;
         height: 20px;
@@ -159,24 +177,24 @@
     }
 
     /* Color classes for different value ranges */
-    .white {
-        color: white !important;
+    .dark-gray {
+        color: #4E4E4E !important;
     }
 
-    .green {
-        color: green !important;
+    .dark-green {
+        color: #3A6351 !important;
     }
 
-    .yellow {
-        color: yellow !important;
+    .olive {
+        color: #A4A90D !important;
     }
 
-    .red {
-        color: red !important;
+    .dark-orange {
+        color: #FF8C42 !important;
     }
 
-    .darkred {
-        color: darkred !important;
+    .dark-red {
+        color: #B33030 !important;
     }
 </style>
 
@@ -195,8 +213,8 @@
             <!-- Needle indicating the current value position -->
             <div class="needle" style="left: {needlePosition}%;"></div>
         </div>
-        <!-- Display the current value with the appropriate color -->
-        <div class="value {intervals.find(interval => currentValue >= interval.min && currentValue <= interval.max)?.color}">
+        <!-- Display the current value with the appropriate color class -->
+        <div class="value {colorClass}">
             {currentValue}
         </div>
     </div>
