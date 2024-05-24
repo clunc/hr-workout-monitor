@@ -131,7 +131,7 @@
         margin: 20px 0;
     }
 
-    /* Background bar for the intervals without a border */
+    /* Background bar for the intervals with a border */
     .bar {
         width: 300px;
         height: 20px;
@@ -140,22 +140,23 @@
         margin: 10px auto;
         border-radius: 10px;
         overflow: hidden;
+        border: 0.5px solid #888; /* Lighter and thinner border around the bar */
     }
 
     /* Individual interval segments */
     .segment {
         position: absolute;
         height: 100%;
+        border-radius: 0; /* Remove border-radius from segments */
     }
 
-    /* Styling for the first segment */
+    /* Ensure the first and last segment properly round */
     .segment:first-of-type {
         border-top-left-radius: 10px;
         border-bottom-left-radius: 10px;
     }
 
-    /* Styling for the last segment */
-    .segment.last {
+    .segment:last-of-type {
         border-top-right-radius: 10px;
         border-bottom-right-radius: 10px;
     }
@@ -204,9 +205,9 @@
         <h2>Value</h2>
         <div class="bar">
             <!-- Loop through each segment and display it with appropriate styling -->
-            {#each segmentWidths as { width, color, isLast }, i}
+            {#each segmentWidths as { width, color }, i}
                 <div 
-                    class="segment {isLast ? 'last' : ''}" 
+                    class="segment" 
                     style="left: {segmentWidths.slice(0, i).reduce((sum, s) => sum + s.width, 0)}%; width: {width}%; background: {color};">
                 </div>
             {/each}
