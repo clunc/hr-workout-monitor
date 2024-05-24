@@ -15,8 +15,6 @@
         max: number; // Maximum value of the bar
         intervals: Interval[]; // Array of interval objects
         currentValue: number; // Current value of the bar
-        direction: number; // Direction of value change (1 for increasing, -1 for decreasing)
-        timer: NodeJS.Timeout | null; // Timer for the animation
 
         // Constructor to initialize the IntervalBar instance
         constructor(intervals: Interval[]) {
@@ -24,31 +22,6 @@
             this.min = Math.min(...intervals.map(interval => interval.min));
             this.max = Math.max(...intervals.map(interval => interval.max));
             this.currentValue = this.min;
-            this.direction = 1;
-            this.timer = null;
-        }
-
-        // Method to start the animation and update the current value
-        startAnimation(callback: (value: number) => void) {
-            this.timer = setInterval(() => {
-                if (this.direction === 1) {
-                    this.currentValue += 1;
-                    if (this.currentValue >= this.max) {
-                        this.direction = -1;
-                    }
-                } else {
-                    this.currentValue -= 1;
-                    if (this.currentValue <= this.min) {
-                        this.direction = 1;
-                    }
-                }
-                callback(this.currentValue);
-            }, 50); // Update every 50 milliseconds
-        }
-
-        // Method to stop the animation
-        stopAnimation() {
-            if (this.timer) clearInterval(this.timer);
         }
 
         // Method to calculate the needle position as a percentage
@@ -82,6 +55,11 @@
             };
             return colorMap[color] || '';
         }
+
+        // Method to update the current value from an external event
+        updateValue(newValue: number) {
+            this.currentValue = newValue;
+        }
     }
 
     // Define the intervals for the bar
@@ -93,10 +71,10 @@
         { min: 190, max: 200, color: '#B33030' } // Dark Red
     ];
 
-    // Create an instance of IntervalBar
-    const intervalBar = new IntervalBar(intervals);
+    // Create an instance of IntervalBar with an initial value
+    let currentValue = 100; // Initialize the current value
+    const intervalBar = new IntervalBar(intervals, currentValue);
 
-    let currentValue = intervalBar.currentValue; // Initialize the current value
     let needlePosition = intervalBar.calculateNeedlePosition(); // Calculate the initial needle position
     let segmentWidths = intervalBar.getSegmentWidths(); // Calculate the initial segment widths
     let colorClass = intervalBar.getColorClass(); // Get the initial color class
@@ -111,11 +89,21 @@
 
     // Cleanup the interval on component destruction
     onDestroy(() => {
-        intervalBar.stopAnimation();
+        if (timer) clearInterval(timer);
     });
 
-    // Start the animation when the component is initialized
-    intervalBar.startAnimation(updateDisplay);
+    // Update the value and display whenever an external event occurs
+    export function updateValue(newValue: number) {
+        intervalBar.updateValue(newValue);
+        updateDisplay();
+    }
+
+    // Example of how to use an interval to change the value (this can be replaced by an external event)
+    let timer = setInterval(() => {
+        let newValue = intervalBar.currentValue + 1;
+        if (newValue > intervalBar.max) newValue = intervalBar.min;
+        updateValue(newValue);
+    }, 50); // Update every second
 </script>
 
 <style>
