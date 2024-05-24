@@ -12,11 +12,11 @@
         timer: NodeJS.Timeout | null; // Timer for the animation
 
         // Constructor to initialize the IntervalBar instance
-        constructor(min: number, max: number, intervals: { min: number, max: number, color: string }[]) {
-            this.min = min;
-            this.max = max;
+        constructor(intervals: { min: number, max: number, color: string }[]) {
             this.intervals = intervals;
-            this.currentValue = min;
+            this.min = Math.min(...intervals.map(interval => interval.min));
+            this.max = Math.max(...intervals.map(interval => interval.max));
+            this.currentValue = this.min;
             this.direction = 1;
             this.timer = null;
         }
@@ -81,15 +81,15 @@
 
     // Define the intervals for the bar
     const intervals = [
-        { min: 0, max: 130, color: '#4E4E4E' }, // Dark Gray
+        { min: 100, max: 130, color: '#4E4E4E' }, // Dark Gray
         { min: 130, max: 140, color: '#3A6351' }, // Dark Green
         { min: 140, max: 180, color: '#A4A90D' }, // Olive
         { min: 180, max: 190, color: '#FF8C42' }, // Dark Orange
-        { min: 190, max: 300, color: '#B33030' } // Dark Red
+        { min: 190, max: 200, color: '#B33030' } // Dark Red
     ];
 
     // Create an instance of IntervalBar
-    const intervalBar = new IntervalBar(0, 300, intervals);
+    const intervalBar = new IntervalBar(intervals);
 
     let currentValue = intervalBar.currentValue; // Initialize the current value
     let needlePosition = intervalBar.calculateNeedlePosition(); // Calculate the initial needle position
