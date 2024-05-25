@@ -1,7 +1,12 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
 
-    // WorkoutTimer class to manage the timer logic
+    enum TimerState {
+        STOPPED = 'stopped',
+        RUNNING = 'running',
+        PAUSED = 'paused'
+    }
+
     class WorkoutTimer {
         warmUpDuration: number;
         roundDuration: number;
@@ -10,8 +15,7 @@
         currentTime: number;
         currentRound: number;
         phase: string;
-        running: boolean;
-        paused: boolean;
+        state: TimerState;
         workoutTimer: any;
 
         constructor(warmUpDuration: number, roundDuration: number, restDuration: number, totalRounds: number) {
@@ -26,9 +30,8 @@
 
         // Start the timer and initiate the warm-up phase
         startTimer() {
-            if (!this.running) {
-                this.running = true;
-                this.paused = false;
+            if (this.state === TimerState.STOPPED) {
+                this.state = TimerState.RUNNING;
                 this.setPhase('Warm Up', this.warmUpDuration);
                 this.startWorkoutInterval();
             }
@@ -41,9 +44,9 @@
 
         // Update the current time or advance the phase if time runs out
         updateTime() {
-            if (!this.paused && this.currentTime > 0) {
+            if (this.currentTime > 0) {
                 this.currentTime--;
-            } else if (!this.paused) {
+            } else {
                 this.advancePhase();
             }
         }
@@ -81,28 +84,33 @@
 
         // End the workout and clear the interval
         endWorkout() {
-            this.phase = 'Done';
-            this.running = false;
+            this.state = TimerState.STOPPED;
             clearInterval(this.workoutTimer);
         }
 
         // Pause the timer
         pauseTimer() {
-            if (this.running && !this.paused) {
-                this.paused = true;
+            if (this.state === TimerState.RUNNING) {
+                this.state = TimerState.PAUSED;
+                clearInterval(this.workoutTimer);
             }
         }
 
         // Continue the timer
         continueTimer() {
-            if (this.running && this.paused) {
-                this.paused = false;
+            if (this.state === TimerState.PAUSED) {
+                this.state = TimerState.RUNNING;
+                this.startWorkoutInterval();
             }
         }
 
         // Stop the timer and reset it to its initial state
         stopTimer() {
-            this.resetTimer();
+            if (this.state === TimerState.RUNNING || this.state === TimerState.PAUSED) {
+                this.state = TimerState.STOPPED;
+                clearInterval(this.workoutTimer);
+                this.resetTimer();
+            }
         }
 
         // Reset the timer to its initial state
@@ -112,9 +120,8 @@
             }
             this.currentTime = 0;
             this.currentRound = 0;
-            this.phase = 'Warm Up';
-            this.running = false;
-            this.paused = false;
+            this.phase = 'Stopped';
+            this.state = TimerState.STOPPED;
         }
     }
 
@@ -130,8 +137,7 @@
     let currentTime = workoutTimer.currentTime;
     let currentRound = workoutTimer.currentRound;
     let phase = workoutTimer.phase;
-    let running = workoutTimer.running;
-    let paused = workoutTimer.paused;
+    let state = workoutTimer.state;
 
     // Function to start the timer and update the state
     function startTimer() {
@@ -141,9 +147,9 @@
 
     // Function to toggle pause and continue
     function togglePauseContinue() {
-        if (paused) {
+        if (state === TimerState.PAUSED) {
             workoutTimer.continueTimer();
-        } else {
+        } else if (state === TimerState.RUNNING) {
             workoutTimer.pauseTimer();
         }
         updateState();
@@ -160,13 +166,12 @@
         currentTime = workoutTimer.currentTime;
         currentRound = workoutTimer.currentRound;
         phase = workoutTimer.phase;
-        running = workoutTimer.running;
-        paused = workoutTimer.paused;
+        state = workoutTimer.state;
     }
 
     // Interval to update the UI every second if the timer is running
     const interval = setInterval(() => {
-        if (running) {
+        if (state === TimerState.RUNNING) {
             updateState();
         }
     }, 1000);
@@ -247,21 +252,24 @@
         <h2>{timerLabel}</h2>
         <h3 id="time">{timeDisplay}</h3>
     </div>
-    <div class="round-counter" hidden={phase === 'Warm Up' || phase === 'Done'}>
+    <div class="round-counter" hidden={phase === 'Stopped'}>
         Round: {roundCounter}
     </div>
     <div class="controls">
-        {#if !running}
+        {#if state === TimerState.STOPPED}
             <button on:click={startTimer}>
                 <i class="fas fa-play icon"></i> Start
             </button>
-        {:else}
+        {:else if state === TimerState.RUNNING}
             <button on:click={togglePauseContinue}>
-                {#if paused}
-                    <i class="fas fa-play icon"></i> Continue
-                {:else}
-                    <i class="fas fa-pause icon"></i> Pause
-                {/if}
+                <i class="fas fa-pause icon"></i> Pause
+            </button>
+            <button id="stop-btn" on:click={stopTimer}>
+                <i class="fas fa-stop icon"></i> Stop
+            </button>
+        {:else if state === TimerState.PAUSED}
+            <button on:click={togglePauseContinue}>
+                <i class="fas fa-play icon"></i> Continue
             </button>
             <button id="stop-btn" on:click={stopTimer}>
                 <i class="fas fa-stop icon"></i> Stop
