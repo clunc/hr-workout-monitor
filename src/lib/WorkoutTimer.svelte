@@ -11,6 +11,7 @@
         currentRound: number;
         phase: string;
         running: boolean;
+        paused: boolean;
         workoutTimer: any;
 
         constructor(warmUpDuration: number, roundDuration: number, restDuration: number, totalRounds: number) {
@@ -25,9 +26,12 @@
 
         // Start the timer and initiate the warm-up phase
         startTimer() {
-            this.running = true;
-            this.setPhase('Warm Up', this.warmUpDuration);
-            this.startWorkoutInterval();
+            if (!this.running) {
+                this.running = true;
+                this.paused = false;
+                this.setPhase('Warm Up', this.warmUpDuration);
+                this.startWorkoutInterval();
+            }
         }
 
         // Set an interval to update the timer every second
@@ -37,9 +41,9 @@
 
         // Update the current time or advance the phase if time runs out
         updateTime() {
-            if (this.currentTime > 0) {
+            if (!this.paused && this.currentTime > 0) {
                 this.currentTime--;
-            } else {
+            } else if (!this.paused) {
                 this.advancePhase();
             }
         }
@@ -82,6 +86,25 @@
             clearInterval(this.workoutTimer);
         }
 
+        // Pause the timer
+        pauseTimer() {
+            if (this.running && !this.paused) {
+                this.paused = true;
+            }
+        }
+
+        // Continue the timer
+        continueTimer() {
+            if (this.running && this.paused) {
+                this.paused = false;
+            }
+        }
+
+        // Stop the timer and reset it to its initial state
+        stopTimer() {
+            this.resetTimer();
+        }
+
         // Reset the timer to its initial state
         resetTimer() {
             if (this.workoutTimer) {
@@ -91,6 +114,7 @@
             this.currentRound = 0;
             this.phase = 'Warm Up';
             this.running = false;
+            this.paused = false;
         }
     }
 
@@ -107,6 +131,7 @@
     let currentRound = workoutTimer.currentRound;
     let phase = workoutTimer.phase;
     let running = workoutTimer.running;
+    let paused = workoutTimer.paused;
 
     // Function to start the timer and update the state
     function startTimer() {
@@ -114,9 +139,19 @@
         updateState();
     }
 
-    // Function to reset the timer and update the state
-    function resetTimer() {
-        workoutTimer.resetTimer();
+    // Function to toggle pause and continue
+    function togglePauseContinue() {
+        if (paused) {
+            workoutTimer.continueTimer();
+        } else {
+            workoutTimer.pauseTimer();
+        }
+        updateState();
+    }
+
+    // Function to stop the timer and update the state
+    function stopTimer() {
+        workoutTimer.stopTimer();
         updateState();
     }
 
@@ -126,6 +161,7 @@
         currentRound = workoutTimer.currentRound;
         phase = workoutTimer.phase;
         running = workoutTimer.running;
+        paused = workoutTimer.paused;
     }
 
     // Interval to update the UI every second if the timer is running
@@ -168,28 +204,41 @@
         margin: 10px 0;
     }
 
+    .controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
     .controls button {
         padding: 10px 20px;
-        margin: 5px;
         font-size: 16px;
         cursor: pointer;
         border: none;
         border-radius: 5px;
         background-color: #007bff;
         color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 120px; /* Set a fixed width */
     }
 
     .controls button:disabled {
         background-color: #555;
     }
 
-    #reset-btn {
+    #stop-btn {
         background-color: #dc3545;
     }
 
     .round-counter {
         margin: 10px 0;
         font-size: 20px;
+    }
+
+    .icon {
+        margin-right: 8px;
     }
 </style>
 
@@ -202,8 +251,21 @@
         Round: {roundCounter}
     </div>
     <div class="controls">
-        <button on:click={startTimer} disabled={running}>Start</button>
-        <button id="reset-btn" on:click={resetTimer}>Reset</button>
+        {#if !running}
+            <button on:click={startTimer}>
+                <i class="fas fa-play icon"></i> Start
+            </button>
+        {:else}
+            <button on:click={togglePauseContinue}>
+                {#if paused}
+                    <i class="fas fa-play icon"></i> Continue
+                {:else}
+                    <i class="fas fa-pause icon"></i> Pause
+                {/if}
+            </button>
+            <button id="stop-btn" on:click={stopTimer}>
+                <i class="fas fa-stop icon"></i> Stop
+            </button>
+        {/if}
     </div>
 </div>
-
