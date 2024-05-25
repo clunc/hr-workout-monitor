@@ -4,7 +4,8 @@
     enum TimerState {
         STOPPED = 'stopped',
         RUNNING = 'running',
-        PAUSED = 'paused'
+        PAUSED = 'paused',
+        FINISHED = 'finished'
     }
 
     interface WorkoutPhase {
@@ -55,7 +56,7 @@
         }
 
         startTimer() {
-            if (this.state === TimerState.STOPPED) {
+            if (this.state === TimerState.STOPPED || this.state === TimerState.FINISHED) {
                 this.state = TimerState.RUNNING;
                 this.setPhase(0);
                 this.startWorkoutInterval();
@@ -80,7 +81,7 @@
             if (this.currentPhaseIndex < this.routine.getTotalPhases() - 1) {
                 this.setPhase(this.currentPhaseIndex + 1);
             } else {
-                this.stopTimer(); // Changed from endWorkout to stopTimer
+                this.finishWorkout();
             }
         }
 
@@ -126,6 +127,12 @@
             }
         }
 
+        finishWorkout() {
+            this.state = TimerState.FINISHED;
+            this.clearWorkoutInterval();
+            this.onUpdate();
+        }
+
         resetTimer() {
             this.clearWorkoutInterval();
             this.currentPhaseIndex = 0;
@@ -136,7 +143,9 @@
         }
 
         getCurrentPhaseName(): string {
-            return this.state === TimerState.STOPPED ? 'Stopped' : this.routine.getPhase(this.currentPhaseIndex)?.name;
+            if (this.state === TimerState.STOPPED) return 'Stopped';
+            if (this.state === TimerState.FINISHED) return 'Finished';
+            return this.routine.getPhase(this.currentPhaseIndex)?.name;
         }
 
         getCurrentRound(): number {
@@ -167,6 +176,18 @@
             }
         }
     }
+
+    // const fourByFour = new WorkoutRoutine([
+    //     { name: 'Warm Up', duration: 120 },
+    //     { name: 'Round', duration: 120 },
+    //     { name: 'Rest', duration: 120 },
+    //     { name: 'Round', duration: 120 },
+    //     { name: 'Rest', duration: 120 },
+    //     { name: 'Round', duration: 120 },
+    //     { name: 'Rest', duration: 120 },
+    //     { name: 'Round', duration: 120 },
+    //     { name: 'Cool Down', duration: 120 }
+    // ]);
 
     const fourByFour = new WorkoutRoutine([
         { name: 'Warm Up', duration: 2 },
@@ -284,13 +305,13 @@
         <h2>{timerLabel}</h2>
         <h3 id="time">{timeDisplay}</h3>
     </div>
-    <div class="round-counter" hidden={currentPhase === 'Stopped'}>
+    <div class="round-counter" hidden={currentPhase === 'Stopped' || currentPhase === 'Finished'}>
         Round: {currentPhase === 'Warm Up' || currentPhase === 'Cool Down' ? 0 : currentRound} / {totalRounds}
     </div>
     <div class="controls">
-        {#if state === TimerState.STOPPED}
+        {#if state === TimerState.STOPPED || state === TimerState.FINISHED}
             <button on:click={startTimer}>
-                <i class="fas fa-play icon"></i> Start
+                <i class="fas fa-play icon"></i> {state === TimerState.STOPPED ? 'Start' : 'Restart'}
             </button>
         {:else if state === TimerState.RUNNING}
             <button on:click={togglePauseContinue}>
