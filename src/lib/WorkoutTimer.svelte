@@ -2,38 +2,8 @@
     // Importing the onDestroy lifecycle function from Svelte
     import { onDestroy } from 'svelte';
 
-    // Enum to represent the state of the timer
-    enum TimerState {
-        STOPPED = 'stopped',
-        RUNNING = 'running',
-        PAUSED = 'paused',
-        FINISHED = 'finished'
-    }
-
-    // Interface for a workout phase
-    interface WorkoutPhase {
-        name: string;
-        duration: number;
-    }
-
-    // Class to represent a workout routine consisting of multiple phases
-    class WorkoutRoutine {
-        phases: WorkoutPhase[];
-
-        constructor(phases: WorkoutPhase[]) {
-            this.phases = phases;
-        }
-
-        // Method to get a phase by index
-        getPhase(index: number): WorkoutPhase {
-            return this.phases[index];
-        }
-
-        // Method to get the total number of phases
-        getTotalPhases(): number {
-            return this.phases.length;
-        }
-    }
+    import { TimerState } from './TimerState';
+    import { WorkoutRoutine } from './WorkoutRoutine';
 
     // Class to manage the workout timer
     class WorkoutTimer {
