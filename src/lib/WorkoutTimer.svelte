@@ -86,6 +86,7 @@
         endWorkout() {
             this.state = TimerState.STOPPED;
             clearInterval(this.workoutTimer);
+            this.resetTimer();
         }
 
         // Pause the timer
