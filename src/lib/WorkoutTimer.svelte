@@ -7,186 +7,218 @@
         PAUSED = 'paused'
     }
 
-    class WorkoutTimer {
-        warmUpDuration: number;
-        roundDuration: number;
-        restDuration: number;
-        totalRounds: number;
-        currentTime: number;
-        currentRound: number;
-        phase: string;
-        state: TimerState;
-        workoutTimer: any;
+    interface WorkoutPhase {
+        name: string;
+        duration: number;
+    }
 
-        constructor(warmUpDuration: number, roundDuration: number, restDuration: number, totalRounds: number) {
-            this.warmUpDuration = warmUpDuration;
-            this.roundDuration = roundDuration;
-            this.restDuration = restDuration;
-            this.totalRounds = totalRounds;
+    class WorkoutRoutine {
+        phases: WorkoutPhase[];
 
-            // Initialize the timer with default values
-            this.resetTimer();
+        constructor(phases: WorkoutPhase[]) {
+            this.phases = phases;
         }
 
-        // Start the timer and initiate the warm-up phase
+        getPhase(index: number): WorkoutPhase {
+            return this.phases[index];
+        }
+
+        getTotalPhases(): number {
+            return this.phases.length;
+        }
+    }
+
+    class WorkoutTimer {
+        routine: WorkoutRoutine;
+        currentPhaseIndex: number;
+        currentTime: number;
+        state: TimerState;
+        workoutTimer: any;
+        interval: any;
+        onUpdate: () => void;
+        currentRound: number;
+
+        constructor(routine: WorkoutRoutine, onUpdate: () => void) {
+            this.routine = routine;
+            this.onUpdate = onUpdate;
+            this.currentPhaseIndex = 0;
+            this.currentTime = 0;
+            this.state = TimerState.STOPPED;
+            this.currentRound = 0;
+            this.workoutTimer = null;
+            this.interval = setInterval(() => {
+                if (this.state === TimerState.RUNNING) {
+                    this.updateState();
+                }
+            }, 1000);
+        }
+
         startTimer() {
             if (this.state === TimerState.STOPPED) {
                 this.state = TimerState.RUNNING;
-                this.setPhase('Warm Up', this.warmUpDuration);
+                this.setPhase(0);
                 this.startWorkoutInterval();
+                this.onUpdate();
             }
         }
 
-        // Set an interval to update the timer every second
         startWorkoutInterval() {
             this.workoutTimer = setInterval(() => this.updateTime(), 1000);
         }
 
-        // Update the current time or advance the phase if time runs out
         updateTime() {
             if (this.currentTime > 0) {
                 this.currentTime--;
             } else {
                 this.advancePhase();
             }
+            this.onUpdate();
         }
 
-        // Advance to the next phase based on the current phase
         advancePhase() {
-            switch (this.phase) {
-                case 'Warm Up':
-                    this.setPhase('Round', this.roundDuration);
-                    break;
-                case 'Round':
-                    this.setPhase('Rest', this.restDuration);
-                    break;
-                case 'Rest':
-                    this.handleRestPhaseEnd();
-                    break;
-            }
-        }
-
-        // Handle the end of the rest phase, either start a new round or end the workout
-        handleRestPhaseEnd() {
-            this.currentRound++;
-            if (this.currentRound < this.totalRounds) {
-                this.setPhase('Round', this.roundDuration);
+            if (this.currentPhaseIndex < this.routine.getTotalPhases() - 1) {
+                this.setPhase(this.currentPhaseIndex + 1);
             } else {
                 this.endWorkout();
             }
         }
 
-        // Set the current phase and its duration
-        setPhase(phase: string, duration: number) {
-            this.phase = phase;
-            this.currentTime = duration;
+        setPhase(index: number) {
+            this.currentPhaseIndex = index;
+            this.currentTime = this.routine.getPhase(index).duration;
+            this.updateCurrentRound();
+            this.onUpdate();
         }
 
-        // End the workout and clear the interval
+        updateCurrentRound() {
+            let roundIndex = 0;
+            for (let i = 0; i <= this.currentPhaseIndex; i++) {
+                if (this.routine.getPhase(i).name === 'Round') {
+                    roundIndex++;
+                }
+            }
+            this.currentRound = roundIndex;
+        }
+
         endWorkout() {
             this.state = TimerState.STOPPED;
             clearInterval(this.workoutTimer);
             this.resetTimer();
+            this.onUpdate();
         }
 
-        // Pause the timer
         pauseTimer() {
             if (this.state === TimerState.RUNNING) {
                 this.state = TimerState.PAUSED;
                 clearInterval(this.workoutTimer);
+                this.onUpdate();
             }
         }
 
-        // Continue the timer
         continueTimer() {
             if (this.state === TimerState.PAUSED) {
                 this.state = TimerState.RUNNING;
                 this.startWorkoutInterval();
+                this.onUpdate();
             }
         }
 
-        // Stop the timer and reset it to its initial state
         stopTimer() {
             if (this.state === TimerState.RUNNING || this.state === TimerState.PAUSED) {
                 this.state = TimerState.STOPPED;
                 clearInterval(this.workoutTimer);
                 this.resetTimer();
+                this.onUpdate();
             }
         }
 
-        // Reset the timer to its initial state
         resetTimer() {
             if (this.workoutTimer) {
                 clearInterval(this.workoutTimer);
             }
+            this.currentPhaseIndex = 0;
             this.currentTime = 0;
-            this.currentRound = 0;
-            this.phase = 'Stopped';
             this.state = TimerState.STOPPED;
+            this.updateCurrentRound();
+            this.onUpdate();
+        }
+
+        getCurrentPhaseName(): string {
+            return this.state === TimerState.STOPPED ? 'Stopped' : this.routine.getPhase(this.currentPhaseIndex)?.name;
+        }
+
+        getCurrentRound(): number {
+            return this.currentRound;
+        }
+
+        getState(): TimerState {
+            return this.state;
+        }
+
+        getTime(): number {
+            return this.currentTime;
+        }
+
+        updateState() {
+            this.onUpdate();
+        }
+
+        cleanup() {
+            clearInterval(this.interval);
+            this.resetTimer();
         }
     }
 
-    // Initialize WorkoutTimer with props
-    export let warmUpDuration = 2;
-    export let roundDuration = 2;
-    export let restDuration = 2;
-    export let totalRounds = 3;
+    const fourByFour = new WorkoutRoutine([
+        { name: 'Warm Up', duration: 2 },
+        { name: 'Round', duration: 2 },
+        { name: 'Rest', duration: 2 },
+        { name: 'Round', duration: 2 },
+        { name: 'Rest', duration: 2 },
+        { name: 'Round', duration: 2 },
+        { name: 'Rest', duration: 2 },
+        { name: 'Round', duration: 2 },
+        { name: 'Cool Down', duration: 2 }
+    ]);
 
-    // Create a new instance of WorkoutTimer
-    let workoutTimer = new WorkoutTimer(warmUpDuration, roundDuration, restDuration, totalRounds);
+    let selectedRoutine = fourByFour;
+    let workoutTimer = new WorkoutTimer(selectedRoutine, updateState);
 
-    let currentTime = workoutTimer.currentTime;
-    let currentRound = workoutTimer.currentRound;
-    let phase = workoutTimer.phase;
-    let state = workoutTimer.state;
+    let currentTime = workoutTimer.getTime();
+    let currentPhase = workoutTimer.getCurrentPhaseName();
+    let state = workoutTimer.getState();
+    let totalRounds = selectedRoutine.phases.filter(phase => phase.name === 'Round').length;
+    let currentRound = workoutTimer.getCurrentRound();
 
-    // Function to start the timer and update the state
     function startTimer() {
         workoutTimer.startTimer();
-        updateState();
     }
 
-    // Function to toggle pause and continue
     function togglePauseContinue() {
         if (state === TimerState.PAUSED) {
             workoutTimer.continueTimer();
         } else if (state === TimerState.RUNNING) {
             workoutTimer.pauseTimer();
         }
-        updateState();
     }
 
-    // Function to stop the timer and update the state
     function stopTimer() {
         workoutTimer.stopTimer();
-        updateState();
     }
 
-    // Update the local state variables with the current timer state
     function updateState() {
-        currentTime = workoutTimer.currentTime;
-        currentRound = workoutTimer.currentRound;
-        phase = workoutTimer.phase;
-        state = workoutTimer.state;
+        currentTime = workoutTimer.getTime();
+        currentPhase = workoutTimer.getCurrentPhaseName();
+        state = workoutTimer.getState();
+        currentRound = workoutTimer.getCurrentRound();
     }
 
-    // Interval to update the UI every second if the timer is running
-    const interval = setInterval(() => {
-        if (state === TimerState.RUNNING) {
-            updateState();
-        }
-    }, 1000);
-
-    // Clean up interval and reset the timer on component destroy
     onDestroy(() => {
-        clearInterval(interval);
-        workoutTimer.resetTimer();
+        workoutTimer.cleanup();
     });
 
-    // Reactive statements to update the UI
-    $: timerLabel = phase;
+    $: timerLabel = currentPhase;
     $: timeDisplay = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
-    $: roundCounter = `${Math.min(currentRound + 1, workoutTimer.totalRounds)} / ${workoutTimer.totalRounds}`;
 </script>
 
 <style>
@@ -227,7 +259,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 120px; /* Set a fixed width */
+        width: 120px;
     }
 
     .controls button:disabled {
@@ -253,8 +285,8 @@
         <h2>{timerLabel}</h2>
         <h3 id="time">{timeDisplay}</h3>
     </div>
-    <div class="round-counter" hidden={phase === 'Stopped'}>
-        Round: {roundCounter}
+    <div class="round-counter" hidden={currentPhase === 'Stopped'}>
+        Round: {currentPhase === 'Warm Up' || currentPhase === 'Cool Down' ? 0 : currentRound} / {totalRounds}
     </div>
     <div class="controls">
         {#if state === TimerState.STOPPED}
