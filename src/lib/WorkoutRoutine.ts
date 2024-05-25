@@ -1,4 +1,4 @@
-import { WorkoutPhase } from './WorkoutPhase';
+import type { WorkoutPhase } from './WorkoutPhase';
 
 export class WorkoutRoutine {
     phases: WorkoutPhase[];
