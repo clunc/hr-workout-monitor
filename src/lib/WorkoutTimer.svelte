@@ -33,10 +33,11 @@
         currentPhaseIndex: number;
         currentTime: number;
         state: TimerState;
-        workoutTimer: any;
-        interval: any;
+        workoutTimer: number | null;
+        interval: number;
         onUpdate: () => void;
         currentRound: number;
+        static readonly TIMER_INTERVAL = 1000;
 
         constructor(routine: WorkoutRoutine, onUpdate: () => void) {
             this.routine = routine;
@@ -50,7 +51,7 @@
                 if (this.state === TimerState.RUNNING) {
                     this.updateState();
                 }
-            }, 1000);
+            }, WorkoutTimer.TIMER_INTERVAL);
         }
 
         startTimer() {
@@ -63,7 +64,7 @@
         }
 
         startWorkoutInterval() {
-            this.workoutTimer = setInterval(() => this.updateTime(), 1000);
+            this.workoutTimer = window.setInterval(() => this.updateTime(), WorkoutTimer.TIMER_INTERVAL);
         }
 
         updateTime() {
@@ -79,7 +80,7 @@
             if (this.currentPhaseIndex < this.routine.getTotalPhases() - 1) {
                 this.setPhase(this.currentPhaseIndex + 1);
             } else {
-                this.endWorkout();
+                this.stopTimer(); // Changed from endWorkout to stopTimer
             }
         }
 
@@ -100,17 +101,10 @@
             this.currentRound = roundIndex;
         }
 
-        endWorkout() {
-            this.state = TimerState.STOPPED;
-            clearInterval(this.workoutTimer);
-            this.resetTimer();
-            this.onUpdate();
-        }
-
         pauseTimer() {
             if (this.state === TimerState.RUNNING) {
                 this.state = TimerState.PAUSED;
-                clearInterval(this.workoutTimer);
+                this.clearWorkoutInterval();
                 this.onUpdate();
             }
         }
@@ -126,16 +120,14 @@
         stopTimer() {
             if (this.state === TimerState.RUNNING || this.state === TimerState.PAUSED) {
                 this.state = TimerState.STOPPED;
-                clearInterval(this.workoutTimer);
+                this.clearWorkoutInterval();
                 this.resetTimer();
                 this.onUpdate();
             }
         }
 
         resetTimer() {
-            if (this.workoutTimer) {
-                clearInterval(this.workoutTimer);
-            }
+            this.clearWorkoutInterval();
             this.currentPhaseIndex = 0;
             this.currentTime = 0;
             this.state = TimerState.STOPPED;
@@ -165,7 +157,14 @@
 
         cleanup() {
             clearInterval(this.interval);
-            this.resetTimer();
+            this.clearWorkoutInterval();
+        }
+
+        private clearWorkoutInterval() {
+            if (this.workoutTimer !== null) {
+                clearInterval(this.workoutTimer);
+                this.workoutTimer = null;
+            }
         }
     }
 
