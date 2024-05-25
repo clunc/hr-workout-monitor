@@ -2,6 +2,30 @@
     // Import onDestroy from Svelte to handle cleanup
     import { onDestroy } from 'svelte';
 
+    // Simple event emitter class
+    class EventEmitter {
+        events: { [key: string]: Function[] } = {};
+
+        on(event: string, listener: Function) {
+            if (!this.events[event]) {
+                this.events[event] = [];
+            }
+            this.events[event].push(listener);
+        }
+
+        off(event: string, listener: Function) {
+            if (this.events[event]) {
+                this.events[event] = this.events[event].filter(l => l !== listener);
+            }
+        }
+
+        emit(event: string, data: any) {
+            if (this.events[event]) {
+                this.events[event].forEach(listener => listener(data));
+            }
+        }
+    }
+
     // Define the Interval interface to represent each segment of the bar
     interface Interval {
         min: number; // Minimum value of the interval
@@ -15,13 +39,25 @@
         max: number; // Maximum value of the bar
         intervals: Interval[]; // Array of interval objects
         currentValue: number; // Current value of the bar
+        valueStream: EventEmitter; // Event emitter for the value stream
+        valueListener: (value: number) => void; // Listener for value updates
 
         // Constructor to initialize the IntervalBar instance
-        constructor(intervals: Interval[]) {
+        constructor(intervals: Interval[], initialValue: number, valueStream: EventEmitter) {
             this.intervals = intervals;
             this.min = Math.min(...intervals.map(interval => interval.min));
             this.max = Math.max(...intervals.map(interval => interval.max));
-            this.currentValue = this.min;
+            this.currentValue = initialValue;
+            this.valueStream = valueStream;
+
+            // Listener to handle new values from the stream
+            this.valueListener = (newValue: number) => {
+                this.updateValue(newValue);
+                this.updateDisplay();
+            };
+
+            // Subscribe to the value stream
+            this.valueStream.on('newValue', this.valueListener);
         }
 
         // Method to calculate the needle position as a percentage
@@ -60,8 +96,22 @@
         updateValue(newValue: number) {
             this.currentValue = newValue;
         }
+
+        // Method to update the display
+        updateDisplay() {
+            currentValue = this.currentValue;
+            needlePosition = this.calculateNeedlePosition();
+            segmentWidths = this.getSegmentWidths();
+            colorClass = this.getColorClass();
+        }
+
+        // Unsubscribe from the value stream
+        destroy() {
+            this.valueStream.off('newValue', this.valueListener);
+        }
     }
 
+    // Define the intervals for the bar
     // Define the intervals for the bar
     const intervals: Interval[] = [
         { min: 100, max: 130, color: '#4E4E4E' }, // Dark Gray
@@ -71,9 +121,12 @@
         { min: 190, max: 200, color: '#B33030' } // Dark Red
     ];
 
+    // Create an instance of the EventEmitter for the value stream
+    const valueStream = new EventEmitter();
+
     // Create an instance of IntervalBar with an initial value
     let currentValue = 100; // Initialize the current value
-    const intervalBar = new IntervalBar(intervals, currentValue);
+    const intervalBar = new IntervalBar(intervals, currentValue, valueStream);
 
     let needlePosition = intervalBar.calculateNeedlePosition(); // Calculate the initial needle position
     let segmentWidths = intervalBar.getSegmentWidths(); // Calculate the initial segment widths
@@ -89,21 +142,22 @@
 
     // Cleanup the interval on component destruction
     onDestroy(() => {
-        if (timer) clearInterval(timer);
+        intervalBar.destroy();
     });
 
-    // Update the value and display whenever an external event occurs
-    export function updateValue(newValue: number) {
-        intervalBar.updateValue(newValue);
-        updateDisplay();
-    }
-
-    // Example of how to use an interval to change the value (this can be replaced by an external event)
-    let timer = setInterval(() => {
-        let newValue = intervalBar.currentValue + 1;
-        if (newValue > intervalBar.max) newValue = intervalBar.min;
-        updateValue(newValue);
-    }, 50); // Update every second
+    // Mock the backend stream of heart rate values
+    let direction = 1;
+    setInterval(() => {
+        let newValue = intervalBar.currentValue + direction;
+        if (newValue >= intervalBar.max) {
+            newValue = intervalBar.max;
+            direction = -1;
+        } else if (newValue <= intervalBar.min) {
+            newValue = intervalBar.min;
+            direction = 1;
+        }
+        valueStream.emit('newValue', newValue);
+    }, 100); // Emit new value every 100 milliseconds
 </script>
 
 <style>
@@ -195,7 +249,7 @@
 <!-- Main container for the interval bar component -->
 <div class="container">
     <div class="interval-bar">
-        <h2>Value</h2>
+        <h2>Heart Rate</h2>
         <div class="bar">
             <!-- Loop through each segment and display it with appropriate styling -->
             {#each segmentWidths as { width, color, index }}
