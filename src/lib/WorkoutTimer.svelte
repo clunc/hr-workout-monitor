@@ -1,6 +1,8 @@
 <script lang="ts">
+    // Importing the onDestroy lifecycle function from Svelte
     import { onDestroy } from 'svelte';
 
+    // Enum to represent the state of the timer
     enum TimerState {
         STOPPED = 'stopped',
         RUNNING = 'running',
@@ -8,11 +10,13 @@
         FINISHED = 'finished'
     }
 
+    // Interface for a workout phase
     interface WorkoutPhase {
         name: string;
         duration: number;
     }
 
+    // Class to represent a workout routine consisting of multiple phases
     class WorkoutRoutine {
         phases: WorkoutPhase[];
 
@@ -20,15 +24,18 @@
             this.phases = phases;
         }
 
+        // Method to get a phase by index
         getPhase(index: number): WorkoutPhase {
             return this.phases[index];
         }
 
+        // Method to get the total number of phases
         getTotalPhases(): number {
             return this.phases.length;
         }
     }
 
+    // Class to manage the workout timer
     class WorkoutTimer {
         routine: WorkoutRoutine;
         currentPhaseIndex: number;
@@ -38,7 +45,7 @@
         interval: number;
         onUpdate: () => void;
         currentRound: number;
-        static readonly TIMER_INTERVAL = 1000;
+        static readonly TIMER_INTERVAL = 1000; // Timer interval in milliseconds
 
         constructor(routine: WorkoutRoutine, onUpdate: () => void) {
             this.routine = routine;
@@ -55,6 +62,7 @@
             }, WorkoutTimer.TIMER_INTERVAL);
         }
 
+        // Start the timer
         startTimer() {
             if (this.state === TimerState.STOPPED || this.state === TimerState.FINISHED) {
                 this.state = TimerState.RUNNING;
@@ -64,10 +72,12 @@
             }
         }
 
+        // Start the workout interval
         startWorkoutInterval() {
             this.workoutTimer = window.setInterval(() => this.updateTime(), WorkoutTimer.TIMER_INTERVAL);
         }
 
+        // Update the timer
         updateTime() {
             if (this.currentTime > 0) {
                 this.currentTime--;
@@ -77,6 +87,7 @@
             this.onUpdate();
         }
 
+        // Advance to the next phase
         advancePhase() {
             if (this.currentPhaseIndex < this.routine.getTotalPhases() - 1) {
                 this.setPhase(this.currentPhaseIndex + 1);
@@ -85,6 +96,7 @@
             }
         }
 
+        // Set the current phase
         setPhase(index: number) {
             this.currentPhaseIndex = index;
             this.currentTime = this.routine.getPhase(index).duration;
@@ -92,6 +104,7 @@
             this.onUpdate();
         }
 
+        // Update the current round number
         updateCurrentRound() {
             let roundIndex = 0;
             for (let i = 0; i <= this.currentPhaseIndex; i++) {
@@ -102,6 +115,7 @@
             this.currentRound = roundIndex;
         }
 
+        // Pause the timer
         pauseTimer() {
             if (this.state === TimerState.RUNNING) {
                 this.state = TimerState.PAUSED;
@@ -110,6 +124,7 @@
             }
         }
 
+        // Continue the timer
         continueTimer() {
             if (this.state === TimerState.PAUSED) {
                 this.state = TimerState.RUNNING;
@@ -118,6 +133,7 @@
             }
         }
 
+        // Stop the timer
         stopTimer() {
             if (this.state === TimerState.RUNNING || this.state === TimerState.PAUSED) {
                 this.state = TimerState.STOPPED;
@@ -127,12 +143,14 @@
             }
         }
 
+        // Finish the workout
         finishWorkout() {
             this.state = TimerState.FINISHED;
             this.clearWorkoutInterval();
             this.onUpdate();
         }
 
+        // Reset the timer
         resetTimer() {
             this.clearWorkoutInterval();
             this.currentPhaseIndex = 0;
@@ -142,33 +160,40 @@
             this.onUpdate();
         }
 
+        // Get the name of the current phase
         getCurrentPhaseName(): string {
             if (this.state === TimerState.STOPPED) return 'Stopped';
             if (this.state === TimerState.FINISHED) return 'Finished';
             return this.routine.getPhase(this.currentPhaseIndex)?.name;
         }
 
+        // Get the current round number
         getCurrentRound(): number {
             return this.currentRound;
         }
 
+        // Get the current state of the timer
         getState(): TimerState {
             return this.state;
         }
 
+        // Get the current time remaining in the phase
         getTime(): number {
             return this.currentTime;
         }
 
+        // Update the state
         updateState() {
             this.onUpdate();
         }
 
+        // Cleanup method to clear intervals
         cleanup() {
             clearInterval(this.interval);
             this.clearWorkoutInterval();
         }
 
+        // Private method to clear the workout interval
         private clearWorkoutInterval() {
             if (this.workoutTimer !== null) {
                 clearInterval(this.workoutTimer);
@@ -177,18 +202,7 @@
         }
     }
 
-    // const fourByFour = new WorkoutRoutine([
-    //     { name: 'Warm Up', duration: 120 },
-    //     { name: 'Round', duration: 120 },
-    //     { name: 'Rest', duration: 120 },
-    //     { name: 'Round', duration: 120 },
-    //     { name: 'Rest', duration: 120 },
-    //     { name: 'Round', duration: 120 },
-    //     { name: 'Rest', duration: 120 },
-    //     { name: 'Round', duration: 120 },
-    //     { name: 'Cool Down', duration: 120 }
-    // ]);
-
+    // Defining a sample workout routine with phases
     const fourByFour = new WorkoutRoutine([
         { name: 'Warm Up', duration: 2 },
         { name: 'Round', duration: 2 },
@@ -201,19 +215,23 @@
         { name: 'Cool Down', duration: 2 }
     ]);
 
+    // Initializing the selected routine and workout timer
     let selectedRoutine = fourByFour;
     let workoutTimer = new WorkoutTimer(selectedRoutine, updateState);
 
+    // Defining state variables
     let currentTime = workoutTimer.getTime();
     let currentPhase = workoutTimer.getCurrentPhaseName();
     let state = workoutTimer.getState();
     let totalRounds = selectedRoutine.phases.filter(phase => phase.name === 'Round').length;
     let currentRound = workoutTimer.getCurrentRound();
 
+    // Function to start the timer
     function startTimer() {
         workoutTimer.startTimer();
     }
 
+    // Function to toggle between pause and continue
     function togglePauseContinue() {
         if (state === TimerState.PAUSED) {
             workoutTimer.continueTimer();
@@ -222,10 +240,12 @@
         }
     }
 
+    // Function to stop the timer
     function stopTimer() {
         workoutTimer.stopTimer();
     }
 
+    // Function to update the state variables
     function updateState() {
         currentTime = workoutTimer.getTime();
         currentPhase = workoutTimer.getCurrentPhaseName();
@@ -233,10 +253,12 @@
         currentRound = workoutTimer.getCurrentRound();
     }
 
+    // Cleanup interval on component destroy
     onDestroy(() => {
         workoutTimer.cleanup();
     });
 
+    // Reactive statements for timer label and time display
     $: timerLabel = currentPhase;
     $: timeDisplay = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
 </script>
