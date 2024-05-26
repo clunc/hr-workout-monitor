@@ -126,7 +126,7 @@
             this.currentPhaseIndex = 0;
             this.currentTime = 0;
             this.state = TimerState.STOPPED;
-            this.updateCurrentRound();
+            this.currentRound = 0; // Reset the round counter here
             this.onUpdate();
         }
 
@@ -195,6 +195,7 @@
     let state = workoutTimer.getState();
     let totalRounds = selectedRoutine.phases.filter(phase => phase.name === 'Round').length;
     let currentRound = workoutTimer.getCurrentRound();
+    let completedRounds = 0; // To track the total completed rounds
 
     // Function to start the timer
     function startTimer() {
@@ -221,6 +222,12 @@
         currentPhase = workoutTimer.getCurrentPhaseName();
         state = workoutTimer.getState();
         currentRound = workoutTimer.getCurrentRound();
+        if (currentPhase !== 'Warm Up' && currentPhase !== 'Cool Down') {
+            completedRounds = currentRound;
+        }
+        if (state === TimerState.FINISHED) {
+            completedRounds = 0; // Reset completed rounds when the entire workout is finished
+        }
     }
 
     // Cleanup interval on component destroy
@@ -298,7 +305,7 @@
         <h3 id="time">{timeDisplay}</h3>
     </div>
     <div class="round-counter" hidden={currentPhase === 'Stopped' || currentPhase === 'Finished'}>
-        Round: {currentPhase === 'Warm Up' || currentPhase === 'Cool Down' ? 0 : currentRound} / {totalRounds}
+        Round: {completedRounds} / {totalRounds}
     </div>
     <div class="controls">
         {#if state === TimerState.STOPPED || state === TimerState.FINISHED}
