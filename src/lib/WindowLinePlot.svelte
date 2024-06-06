@@ -29,13 +29,50 @@
   const startUpdating = () => {
     interval = setInterval(() => {
       updateData();
-      drawChart();
+      updateChart();
     }, 1001);
   };
 
   const drawChart = () => {
     const svg = d3.select('svg');
-    svg.selectAll('*').remove();
+    const width = +svg.attr('width');
+    const height = +svg.attr('height');
+    const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Initial Axes setup
+    const now = new Date();
+    const tenSecondsAgo = new Date(now.getTime() - 10000);
+
+    const x = d3.scaleTime()
+      .domain([tenSecondsAgo, now])
+      .range([0, innerWidth]);
+
+    const y = d3.scaleLinear()
+      .domain([0, 50]) // Initial y domain setup, values hidden
+      .range([innerHeight, 0]);
+
+    g.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x).tickFormat(d3.timeFormat('%H:%M:%S')))
+      .selectAll("text")
+      .style("fill", "#fff");
+
+    g.append('g')
+      .attr('class', 'y-axis')
+      .call(d3.axisLeft(y).tickValues([])) // Hide initial y-axis values
+      .selectAll("text")
+      .style("fill", "#fff");
+  };
+
+  const updateChart = () => {
+    const svg = d3.select('svg');
+    svg.selectAll('.line-path').remove();
 
     const width = +svg.attr('width');
     const height = +svg.attr('height');
@@ -63,29 +100,30 @@
       .x(d => x(d.time))
       .y(d => y(d.value));
 
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+    const g = svg.select('g');
 
     g.append('path')
       .datum(validData)
+      .attr('class', 'line-path')
       .attr('fill', 'none')
       .attr('stroke', 'steelblue')
       .attr('stroke-width', 1.5)
       .attr('d', line);
 
-    g.append('g')
-      .attr('transform', `translate(0,${innerHeight})`)
+    // Update axes
+    g.select('.x-axis')
       .call(d3.axisBottom(x).tickFormat(d3.timeFormat('%H:%M:%S')))
       .selectAll("text")
       .style("fill", "#fff");
 
-    g.append('g')
-      .call(d3.axisLeft(y))
+    g.select('.y-axis')
+      .call(d3.axisLeft(y)) // Show y-axis values now
       .selectAll("text")
       .style("fill", "#fff");
   };
 
   onMount(() => {
+    drawChart();
     startUpdating();
     return () => clearInterval(interval);
   });
