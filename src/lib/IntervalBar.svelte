@@ -100,7 +100,7 @@
         // Method to update the display
         updateDisplay() {
             currentValue = this.currentValue;
-            needlePosition = this.calculateNeedlePosition();
+            needlePosition = isNaN(this.currentValue) ? 0 : this.calculateNeedlePosition();
             segmentWidths = this.getSegmentWidths();
             colorClass = this.getColorClass();
         }
@@ -111,7 +111,6 @@
         }
     }
 
-    // Define the intervals for the bar
     // Define the intervals for the bar
     const intervals: Interval[] = [
         { min: 100, max: 130, color: '#4E4E4E' }, // Dark Gray
@@ -125,7 +124,7 @@
     const valueStream = new EventEmitter();
 
     // Create an instance of IntervalBar with an initial value
-    let currentValue = 100; // Initialize the current value
+    let currentValue = NaN; // Initialize the current value with NaN
     const intervalBar = new IntervalBar(intervals, currentValue, valueStream);
 
     let needlePosition = intervalBar.calculateNeedlePosition(); // Calculate the initial needle position
@@ -135,7 +134,7 @@
     // Function to update the display when the value changes
     function updateDisplay() {
         currentValue = intervalBar.currentValue;
-        needlePosition = intervalBar.calculateNeedlePosition();
+        needlePosition = isNaN(intervalBar.currentValue) ? 0 : intervalBar.calculateNeedlePosition();
         segmentWidths = intervalBar.getSegmentWidths();
         colorClass = intervalBar.getColorClass();
     }
@@ -143,21 +142,67 @@
     // Cleanup the interval on component destruction
     onDestroy(() => {
         intervalBar.destroy();
+        if (ws) {
+            ws.close();
+        }
     });
 
-    // Mock the backend stream of heart rate values
-    let direction = 1;
-    setInterval(() => {
-        let newValue = intervalBar.currentValue + direction;
-        if (newValue >= intervalBar.max) {
-            newValue = intervalBar.max;
-            direction = -1;
-        } else if (newValue <= intervalBar.min) {
-            newValue = intervalBar.min;
-            direction = 1;
+    // Toggle between test data and actual backend data
+    const USE_TEST_HEART_RATE = false; // Set this to true to use test data
+
+    let ws: WebSocket;
+
+    function initWebSocket() {
+        try {
+            ws = new WebSocket("ws://localhost:8000/ws");
+
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message && message.heart_rate) {
+                        const newValue = message.heart_rate;
+                        valueStream.emit('newValue', newValue);
+                    } else {
+                        console.error("Received invalid data:", message);
+                    }
+                } catch (error) {
+                    console.error("Error parsing WebSocket message:", error);
+                }
+            };
+
+            ws.onopen = function(event) {
+                console.log("Connected to WebSocket server");
+            };
+
+            ws.onclose = function(event) {
+                console.log("Disconnected from WebSocket server");
+            };
+
+            ws.onerror = function(event) {
+                console.error("WebSocket error observed:", event);
+            };
+        } catch (error) {
+            console.error("Failed to initialize WebSocket:", error);
         }
-        valueStream.emit('newValue', newValue);
-    }, 100); // Emit new value every 100 milliseconds
+    }
+
+    if (USE_TEST_HEART_RATE) {
+        // Mock the backend stream of heart rate values
+        let direction = 1;
+        setInterval(() => {
+            let newValue = isNaN(intervalBar.currentValue) ? intervalBar.min : intervalBar.currentValue + direction;
+            if (newValue >= intervalBar.max) {
+                newValue = intervalBar.max;
+                direction = -1;
+            } else if (newValue <= intervalBar.min) {
+                newValue = intervalBar.min;
+                direction = 1;
+            }
+            valueStream.emit('newValue', newValue);
+        }, 100); // Emit new value every 100 milliseconds
+    } else {
+        initWebSocket();
+    }
 </script>
 
 <style>
@@ -263,7 +308,7 @@
         </div>
         <!-- Display the current value with the appropriate color class -->
         <div class="value {colorClass}">
-            {currentValue}
+            {isNaN(currentValue) ? "Loading..." : currentValue}
         </div>
     </div>
 </div>
