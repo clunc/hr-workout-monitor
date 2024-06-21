@@ -29,8 +29,7 @@
     // Create an instance of the EventEmitter for the value stream
     const valueStream = new EventEmitter();
 
-    let data = Array(30).fill({ time: null, value: null });
-    let interval = null;
+    let data = Array(60).fill({ time: null, value: null });
 
     const updateData = (newValue: number) => {
         data.shift();
@@ -57,14 +56,14 @@
 
         // Initial Axes setup
         const now = new Date();
-        const thirtySecondsAgo = new Date(now.getTime() - 30000);
+        const thirtySecondsAgo = new Date(now.getTime() - 60000);
 
         const x = d3.scaleTime()
             .domain([thirtySecondsAgo, now])
             .range([0, innerWidth]);
 
         const y = d3.scaleLinear()
-            .domain([0, 200]) // Initial y domain setup, adjust as needed
+            .domain([70, 100]) // Adjust y domain setup to realistic heart rate range
             .range([innerHeight, 0]);
 
         g.append('g')
@@ -92,9 +91,11 @@
         const innerHeight = height - margin.top - margin.bottom;
 
         const now = new Date();
-        const thirtySecondsAgo = new Date(now.getTime() - 30000);
+        const thirtySecondsAgo = new Date(now.getTime() - 60000);
 
-        const validData = data.filter(d => d.time !== null);
+        // Filter out data points that are outside the x-axis range
+        const validData = data.filter(d => d.time && d.time >= thirtySecondsAgo && d.time <= now);
+
         const x = d3.scaleTime()
             .domain([thirtySecondsAgo, now])
             .range([0, innerWidth]);
