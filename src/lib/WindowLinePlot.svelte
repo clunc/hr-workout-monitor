@@ -135,6 +135,7 @@
     };
 
     let ws: WebSocket;
+    const isDebugMode = false; // Set this to `false` in production
 
     function initWebSocket() {
         try {
@@ -143,8 +144,18 @@
             ws.onmessage = function(event) {
                 try {
                     const message = JSON.parse(event.data);
-                    if (message && message.heart_rate) {
+                    if (message && message.heart_rate && message.timestamp) {
                         const newValue = message.heart_rate;
+
+                        if (isDebugMode) {
+                            // Calculate latency
+                            const messageTime = new Date(message.timestamp);
+                            const currentTime = new Date();
+                            const latency = currentTime.getTime() - messageTime.getTime();
+                            console.log(`Received message:`, message);
+                            console.log(`Latency: ${latency} ms`);
+                        }
+
                         valueStream.emit('newValue', newValue);
                     } else {
                         console.error("Received invalid data:", message);
